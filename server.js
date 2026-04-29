@@ -35,7 +35,7 @@ app.post("/echo", async (req, res) => {
     });
 
     res.json({
-      reply: response.output_text
+      reply: response.output[0].content[0].text
     });
 
   } catch (error) {
