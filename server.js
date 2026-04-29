@@ -3,6 +3,13 @@ const OpenAI = require("openai");
 
 const app = express();
 app.use(express.json());
+app.post("/chat", (req, res) => {
+  const message = req.body.message || "";
+
+  res.json({
+    response: "Echo received: " + message
+  });
+});
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
