@@ -34,11 +34,23 @@ app.post("/echo", async (req, res) => {
       ]
     });
 
+    const replyText =
+      response.output?.[0]?.content?.[0]?.text || "No response from AI";
+
     res.json({
-      reply: response.output[0].content[0].text
+      reply: replyText
     });
 
   } catch (error) {
     console.error(error);
     res.status(500).json({
-      error
+      error: "Echo brain error",
+      details: error.message
+    });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Echo AI running on port ${PORT}`);
+});
