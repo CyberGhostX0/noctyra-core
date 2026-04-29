@@ -1,24 +1,44 @@
-const express = require('express');
-const app = express();
+const express = require("express");
+const OpenAI = require("openai");
 
+const app = express();
 app.use(express.json());
 
-app.get('/', (req, res) => {
-    res.json({
-        status: "Echo is alive",
-        time: new Date()
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
+app.get("/", (req, res) => {
+  res.json({
+    status: "Echo AI server is alive",
+    brain: "online",
+    time: new Date()
+  });
+});
+
+app.post("/echo", async (req, res) => {
+  try {
+    const userInput = req.body.message || "";
+
+    const response = await client.responses.create({
+      model: "gpt-4.1-mini",
+      input: [
+        {
+          role: "system",
+          content: "You are Echo, a private personal AI assistant. Be helpful, direct, loyal, and practical."
+        },
+        {
+          role: "user",
+          content: userInput
+        }
+      ]
     });
-});
-
-app.post('/echo', (req, res) => {
-    const userInput = req.body.message;
 
     res.json({
-        reply: "Echo heard: " + userInput
+      reply: response.output_text
     });
-});
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Echo running on port ${PORT}`);
-});
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      error
