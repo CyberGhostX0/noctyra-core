@@ -27,7 +27,7 @@ app.get("/health", (req, res) => {
   res.json({
     status: "Echo is alive",
     provider: "OpenRouter",
-    model: "openchat/openchat-7b",
+    model: "meta-llama/llama-3-8b-instruct",
     time: new Date(),
   });
 });
