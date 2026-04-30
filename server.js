@@ -7,47 +7,30 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 
 const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-app.get("/", (req, res) => {
-  res.json({
-    status: "Echo AI server is alive",
-    brain: "online",
-    time: new Date(),
-  });
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: "https://openrouter.ai/api/v1",
 });
 
 app.get("/health", (req, res) => {
-  res.json({
-    status: "Echo server is alive",
-    brain: "online",
-    time: new Date(),
-  });
+  res.json({ status: "Echo is alive (OpenRouter)" });
 });
 
 app.post("/chat", async (req, res) => {
   try {
     const userInput = req.body.message || "";
 
-    if (!userInput.trim()) {
-      return res.status(400).json({
-        reply: "Echo needs a message first.",
-      });
-    }
-
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(500).json({
-        reply: "Echo error: API key missing in Railway.",
+    if (!process.env.OPENROUTER_API_KEY) {
+      return res.json({
+        reply: "Missing OpenRouter API key",
       });
     }
 
     const response = await client.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "mistralai/mistral-7b-instruct",
       messages: [
         {
           role: "system",
-          content: "You are Echo, a private personal AI assistant.",
+          content: "You are Echo, a helpful personal AI assistant.",
         },
         {
           role: "user",
@@ -61,14 +44,14 @@ app.post("/chat", async (req, res) => {
     });
 
   } catch (error) {
-    console.error("ECHO ERROR:", error);
+    console.error("ERROR:", error);
 
-    res.status(500).json({
+    res.json({
       reply: "Echo error: " + error.message,
     });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`Echo server running on port ${PORT}`);
+  console.log("Echo server running");
 });
