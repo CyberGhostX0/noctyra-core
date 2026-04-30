@@ -19,6 +19,7 @@ app.get("/", (req, res) => {
   res.json({
     status: "Echo AI server is alive",
     provider: "OpenRouter",
+    model: "openrouter/free",
     time: new Date(),
   });
 });
@@ -27,7 +28,7 @@ app.get("/health", (req, res) => {
   res.json({
     status: "Echo is alive",
     provider: "OpenRouter",
-    model: "meta-llama/llama-3-8b-instruct",
+    model: "openrouter/free",
     time: new Date(),
   });
 });
@@ -49,7 +50,7 @@ app.post("/chat", async (req, res) => {
     }
 
     const response = await client.chat.completions.create({
-      model: "openchat/openchat-7b",
+      model: "openrouter/free",
       messages: [
         {
           role: "system",
@@ -64,7 +65,7 @@ app.post("/chat", async (req, res) => {
     });
 
     res.json({
-      reply: response.choices[0].message.content,
+      reply: response.choices?.[0]?.message?.content || "Echo got an empty response.",
     });
   } catch (error) {
     console.error("ECHO ERROR:", error);
