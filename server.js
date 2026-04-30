@@ -13,8 +13,7 @@ const MEMORY_FILE = path.join(__dirname, "echo_memory.json");
 function loadMemory() {
   try {
     if (fs.existsSync(MEMORY_FILE)) {
-      const data = fs.readFileSync(MEMORY_FILE, "utf8");
-      return JSON.parse(data);
+      return JSON.parse(fs.readFileSync(MEMORY_FILE, "utf8"));
     }
   } catch (error) {
     console.error("Memory load error:", error);
@@ -32,6 +31,51 @@ function saveMemory(memory) {
 
 let echoMemory = loadMemory();
 
+function alreadyRemembered(text) {
+  return echoMemory.some(
+    item => item.text.toLowerCase() === text.toLowerCase()
+  );
+}
+
+function autoLearnMemory(userInput) {
+  const lower = userInput.toLowerCase();
+
+  const memoryTriggers = [
+    "my name is",
+    "i am",
+    "i'm",
+    "my company is",
+    "my business is",
+    "i want",
+    "my goal is",
+    "my goals are",
+    "i like",
+    "i dislike",
+    "i prefer",
+    "from now on",
+    "going forward",
+    "echo should",
+    "echo needs to"
+  ];
+
+  const shouldSave = memoryTriggers.some(trigger => lower.includes(trigger));
+
+  if (shouldSave && userInput.length > 5 && userInput.length < 300) {
+    if (!alreadyRemembered(userInput)) {
+      echoMemory.push({
+        text: userInput,
+        type: "auto",
+        createdAt: new Date().toISOString(),
+      });
+
+      saveMemory(echoMemory);
+      return true;
+    }
+  }
+
+  return false;
+}
+
 const client = new OpenAI({
   apiKey: process.env.OPENROUTER_API_KEY,
   baseURL: "https://openrouter.ai/api/v1",
@@ -47,6 +91,7 @@ app.get("/", (req, res) => {
     provider: "OpenRouter",
     model: "openrouter/free",
     memoryItems: echoMemory.length,
+    autoMemory: true,
     time: new Date(),
   });
 });
@@ -57,7 +102,7 @@ app.get("/health", (req, res) => {
     provider: "OpenRouter",
     model: "openrouter/free",
     memoryItems: echoMemory.length,
-    permanentMemory: true,
+    autoMemory: true,
     time: new Date(),
   });
 });
@@ -73,7 +118,7 @@ app.post("/clear-memory", (req, res) => {
   saveMemory(echoMemory);
 
   res.json({
-    reply: "Echo permanent memory cleared.",
+    reply: "Echo memory cleared.",
   });
 });
 
@@ -104,9 +149,10 @@ app.post("/chat", async (req, res) => {
         .replace(/^remember /i, "")
         .trim();
 
-      if (memoryText.length > 0) {
+      if (memoryText.length > 0 && !alreadyRemembered(memoryText)) {
         echoMemory.push({
           text: memoryText,
+          type: "manual",
           createdAt: new Date().toISOString(),
         });
 
@@ -114,16 +160,16 @@ app.post("/chat", async (req, res) => {
       }
 
       return res.json({
-        reply: `I’ll remember that permanently: ${memoryText}`,
+        reply: `I’ll remember that: ${memoryText}`,
       });
     }
 
+    const learned = autoLearnMemory(userInput);
+
     const memoryContext =
       echoMemory.length > 0
-        ? "Here are permanent memories about the user:\n" +
-          echoMemory
-            .map((item, index) => `${index + 1}. ${item.text}`)
-            .join("\n")
+        ? "Here are saved memories about the user:\n" +
+          echoMemory.map((item, index) => `${index + 1}. ${item.text}`).join("\n")
         : "You do not have saved memory yet.";
 
     const response = await client.chat.completions.create({
@@ -132,7 +178,7 @@ app.post("/chat", async (req, res) => {
         {
           role: "system",
           content:
-            "You are Echo, a private personal AI assistant. Be helpful, calm, direct, practical, and loyal to the user's goals.\n\n" +
+            "You are Echo, a private personal AI assistant. Be helpful, calm, direct, practical, and loyal to the user's goals. Use saved memories naturally when helpful.\n\n" +
             memoryContext,
         },
         {
@@ -142,11 +188,14 @@ app.post("/chat", async (req, res) => {
       ],
     });
 
+    const reply =
+      response.choices?.[0]?.message?.content ||
+      "Echo got an empty response.";
+
     res.json({
-      reply:
-        response.choices?.[0]?.message?.content ||
-        "Echo got an empty response.",
+      reply: learned ? reply + "\n\nMemory updated." : reply,
     });
+
   } catch (error) {
     console.error("ECHO ERROR:", error);
 
